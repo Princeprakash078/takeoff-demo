@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String
+  key         String   @unique
+  budgetLimit Float    @default(10.0)
+  usageTotal  Float    @default(0.0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  lastUsed    DateTime?
+  usageRecords UsageRecord[]
+  rateLimits   RateLimit[]
+}
+
+model UsageRecord {
+  id          String   @id @default(cuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id])
+  modelId     String
+  provider    String
+  tokensIn    Int
+  tokensOut   Int
+  cost        Float
+  latency     Int      // ms
+  status      Int      // e.g. 200, 429, 500
+  createdAt   DateTime @default(now())
+}
+
+model ModelConfig {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  provider    String
+  displayName String
+  active      Boolean  @default(true)
+  priority    Int      @default(1)
+  config      String?  // JSON string for additional model settings
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  apiKey    ApiKey   @relation(fields: [apiKeyId], references: [id])
+  requests  Int      @default(0)
+  window    Int      @default(60) // window in seconds
+  limit     Int      @default(10) // requests per window
+  updatedAt DateTime @updatedAt
+}
+
+model GovernanceConfig {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  isEnabled       Boolean  @default(true)
+  settings        String?  // JSON configuration
+  updatedAt       DateTime @updatedAt
+}
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  content     String
+  version     Int      @default(1)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // e.g. "CREATE_KEY", "UPDATE_CONFIG"
+  entity    String   // e.g. "ApiKey", "GovernanceConfig"
+  entityId  String?
+  details   String?  // JSON stringified details
+  createdAt DateTime @default(now())
+}
+
+model McpServer {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  url         String
+  status      String   @default("Offline")
+  type        String   // "Slack", "Jira", "GitHub", "Custom"
+  config      String?  // JSON stringified auth/settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgentConfig {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  framework   String   // "CrewAI", "LangChain", "AutoGPT"
+  role        String
+  goal        String
+  backstory   String?
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
